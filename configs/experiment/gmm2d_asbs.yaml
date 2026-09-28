@@ -1,0 +1,61 @@
+# @package _global_
+
+defaults:
+  - /problem: gmm2d
+  - /source: gauss
+  - /sde@ref_sde: brownian_motion
+  - /model@controller: fouriermlp
+  - /state_cost: zero
+  - /term_cost: corrector_term_cost
+  - /matcher@adjoint_matcher: adjoint_ve
+  - /model@corrector: fouriermlp
+  - /matcher@corrector_matcher: corrector
+
+exp_name: gmm2d_asbs
+
+# === source ===
+scale: 1
+
+
+# === sde ===
+nfe: 200
+rescale_t: null # quad, cosine
+sigma: 0.3
+
+
+# === training ===
+num_epochs: 7000
+
+# ∇E(X_1) 的逐樣本 L2 範數上限 (term_cost.py GradEnergy.clip)。
+# 裁的是 adjoint matching 的迴歸目標,不是參數梯度,所以有作用時會改變 loss 本身。
+# null = 不裁切。dw4 / lj13 / lj55 的 AS 與 ASBS config 都設 100,只有 demo 和本檔是 null。
+# 在本 GMM 上 |∇E| ≈ 到最近 mode 的距離 / component_std²  (component_std = 0.30,見 dist_utils.GMM2D;
+# 注意它跟上面 SDE 的 sigma 數值相同但是不同的量),所以設 100 時只有離最近 mode 超過約 9 的點會被裁。
+max_grad_E_norm: null
+
+init_stage: corrector
+
+adjoint_matcher:
+  buffer_size: 10000
+  duplicates: 10
+  resample_size: 512
+  num_epochs_per_stage: 60
+  optim:
+    lr: 1e-3
+    weight_decay: 1e-7
+
+corrector_matcher:
+  buffer_size: 10000
+  duplicates: 10
+  resample_size: 512
+  num_epochs_per_stage: 60
+  optim:
+    lr: 1e-3
+    weight_decay: 1e-7
+
+
+# === eval & logging ===
+use_wandb: false
+# eval_freq intentionally unset: falls back to is_last_am_epoch,
+# one eval per adjoint stage -> 58 evals, fits the 6x10 subplot grid
+

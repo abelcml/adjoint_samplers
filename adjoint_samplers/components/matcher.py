@@ -119,14 +119,20 @@ class AdjointMatcher(Matcher):
         xs = torch.stack(xs)
         assert xs.shape == (T, B, D)
 
-        adjoint1 = self._compute_adjoint1(xs[-1], is_asbs_init_stage).clone()
-        adjoints = self._backward_simulate(adjoint1, timesteps, xs)
+        #使用 _compute_adjoint1 和 _backward_simulate 方法計算伴隨變量，這些變量是基於梯度的反向傳播計算的結果。伴隨變量用於優化目標函數，並在訓練過程中提供梯度信息。
+        adjoint1 = self._compute_adjoint1(xs[-1], is_asbs_init_stage).clone() ## 計算初始的伴隨變量 adjoint1，這是基於終點狀態 xs[-1] 和是否處於 ASBS 初始化階段決定的。
+        # 如果是初始化階段，使用零修正器；否則，使用完整的梯度修正器。
+
+        adjoints = self._backward_simulate(adjoint1, timesteps, xs) ## 使用反向模擬方法計算整個軌跡上的伴隨變量 adjoints。
+        # 這是通過從終點反向迭代到起點，逐步累積梯度來完成的。
+
+
         assert adjoints.shape == (T, B, D)
 
         # note: use entire traj as one smaple. this improves training.
         ts = ts.transpose(0, 1)
-        xs = xs.transpose(0, 1)
-        adjoints = adjoints.transpose(0, 1)
+        xs = xs.transpose(0, 1) #一系列時間步長上的樣本 這些樣本代表了系統在不同時間點的狀態
+        adjoints = adjoints.transpose(0, 1) #伴隨變量
         assert ts.shape == (B, T, 1)
         assert adjoints.shape == xs.shape == (B, T, D)
 
@@ -134,7 +140,8 @@ class AdjointMatcher(Matcher):
             "t": ts.reshape(B, T).detach().cpu(),
             "xt": xs.reshape(B, T * D).detach().cpu(),
             "adjointt": adjoints.reshape(B, T * D).detach().cpu(),
-        })
+        }) ## 將時間、狀態和伴隨變量存儲到緩衝區中。
+        # 這些數據會被用於後續的訓練或優化過程。
 
     def prepare_target(self, data, device):
         t = data["t"].to(device)

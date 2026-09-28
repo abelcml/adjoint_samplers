@@ -1,2 +1,2 @@
 _target_: adjoint_samplers.components.term_cost.CorrectorGradTermCost
-max_grad_E_norm: ${max_grad_E_norm}
+max_grad_E_norm: ${max_grad_E_norm}  # 沿用 experiment config 頂層的值;null = 不裁 ∇E

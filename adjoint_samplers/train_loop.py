@@ -56,6 +56,9 @@ def train_one_epoch(
         loss = loss_scale * ((output - target)**2).mean()
         loss.backward()
 
+        # 裁參數梯度:整個 batch 的梯度一起縮短,方向不變。
+        # max_norm=1e20 大到不可能碰到,所以就算 clip_grad_norm=true 也等於沒裁;
+        # 真正有作用的裁切只有 term_cost.py 裡對 ∇E 的 max_grad_E_norm。
         if cfg.clip_grad_norm:
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1e20)
 

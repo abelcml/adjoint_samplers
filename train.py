@@ -35,7 +35,7 @@ def main(cfg):
         train_utils.setup(cfg)
         print(str(cfg))
 
-        device = "cuda"
+        device = "cuda" if torch.cuda.is_available() else "cpu"
 
         # fix the seed for reproducibility
         seed = cfg.seed + distributed_mode.get_rank()

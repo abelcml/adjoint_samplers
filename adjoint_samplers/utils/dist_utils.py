@@ -9,7 +9,7 @@ from torch import distributions
 ######### Target Distributions #########
 ########################################
 
-class GMM1D(distributions.Distribution):
+class GMM1D(distributions.Distribution): #我現在定義一個新的機率分佈，請把它當成 PyTorch 的分佈來用。不是隨便寫 class , 是「按照 PyTorch 規定」做一個分佈物件
     """ A simple bi-modal Gaussian mixtures in 1D for demo purposes
     """
     def __init__(self, device="cpu") -> None:
@@ -19,7 +19,7 @@ class GMM1D(distributions.Distribution):
         self.name = "gmm1d"
         self._initialize_distr(device)
 
-    def _initialize_distr(self, device) -> None:
+    def _initialize_distr(self, device) -> None: ## device: 放tensor的位置 None:不回傳 只做初始化
         loc = torch.tensor([-1, 2], device=device, dtype=torch.float).reshape(2, 1)
         scale = torch.tensor([.7, .4], device=device, dtype=torch.float).reshape(2, 1)
         weights = torch.tensor([.5, .5], device=device, dtype=torch.float).reshape(2)
@@ -42,6 +42,77 @@ class GMM1D(distributions.Distribution):
         self._initialize_distr(device)
         return self
 
+class GMM2D(distributions.Distribution):
+    arg_constraints = {}
+    def __init__(self, device="cpu") -> None:
+        super().__init__()
+
+        self.dim = 2
+        self.name = "gmm2d"
+        self._initialize_distr(device)
+
+    def _initialize_distr(self, device) -> None:
+        n_components = 8
+        radius = 4.0
+        # 決定 ∇E 的大小:mode 附近 |∇E| ≈ 到該 mode 的距離 / component_std² (≈ 距離 × 11)。
+        # 所以 max_grad_E_norm=100 對應離最近 mode 約 9 的距離。
+        component_std = 0.30   
+
+        angles = torch.linspace(
+            0,
+            2 * math.pi,
+            n_components + 1,
+            device=device
+        )[:-1]
+
+        ## turn angles into 2d coordinates
+        loc = torch.stack( 
+            [
+                radius * torch.cos(angles), # [x1 , x2 ,x3 ...]
+                radius * torch.sin(angles),
+            ],
+            dim=1,  # stack x/y into [(x1, y1), (x2, y2), ...]
+
+        )  #loc = μk
+
+        scale = torch.full(
+        (n_components, 2),
+        component_std,
+        device=device,
+        ) # fill tensor with σk
+
+        weights = torch.full(
+            (n_components, ),
+            1.0 / n_components,
+            device=device,
+        ) #weights = πk
+
+        # Normal (loc , scale) 建立component 1: Normal(x1), Normal(y1) , component 2: Normal(x2), Normal(y2) ...
+        modes = distributions.Independent(
+        distributions.Normal(loc, scale), 1
+        )  #1 :把x,y scalar組合成 N([x,y];μk​,σ2I)
+
+        # 先從 8 個 component 中選一個。
+        mix = distributions.Categorical(weights)
+
+        # MixtureSameFamily : 組合起來步驟 我先隨機選一個高斯峰，再從那個峰裡抽一個點先用 Categorical(weights) 選 k , 再從 Normal(loc[k], scale[k]) 生成一個點
+        self.distr = distributions.MixtureSameFamily(
+        mix,
+        modes,
+        )  
+
+
+    def log_prob(self, x: torch.Tensor) -> torch.Tensor:
+        log_prob = self.distr.log_prob(x).unsqueeze(-1)
+        assert log_prob.shape == (*x.shape[:-1], 1)
+        return log_prob
+
+    def sample(self, shape: tuple) -> torch.Tensor:
+        return self.distr.sample(torch.Size(shape))
+
+    def to(self, device) -> distributions.Distribution:
+        self._initialize_distr(device)
+        return self       
 ########################################
 ######### Source Distributions #########
 ########################################

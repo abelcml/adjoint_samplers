@@ -9,6 +9,8 @@ init_stage: adjoint
 
 seed: 0
 
+# 是否裁「參數梯度」(train_loop.py 的 clip_grad_norm_),跟 max_grad_E_norm 裁迴歸目標是兩件事。
+# 即使設 true,train_loop 裡的上限是 1e20,實際上不會觸發。
 clip_grad_norm: false
 checkpoint: null
 save_freq: 100

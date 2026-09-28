@@ -63,8 +63,8 @@ class BaseSDE(torch.nn.Module):
         raise NotImplementedError
 
 
-class BrownianMotionSDE(BaseSDE):
-    """ dX_t = σ dW_t
+class BrownianMotionSDE(BaseSDE): 
+    """ dX_t = σ dW_t  參考過程 還沒有學任何東西的SDE
         dμ_t = 0 dt  , μ(0) = μ_0 ---> μ(t) = μ_0
         dΣ_t = σ^2 dt, Σ(0) = Σ_0 ---> Σ(t) = Σ_0 + σ^2 t
     """
@@ -332,8 +332,8 @@ class ControlledSDE(BaseSDE):
     def diff(self, t):
         return self.ref_sde.diff(t)
 
-    def drift(self, t, x):
-        return self.ref_sde.drift(t, x) + (self.diff(t)**2) * self.u(t, x)
+    def drift(self, t, x):  # dX = σ² · u(t, X) dt + σ dW
+        return self.ref_sde.drift(t, x) + (self.diff(t)**2) * self.u(t, x) # 學出來的SDE學出來的SDE
 
 
 @torch.no_grad()
